@@ -26,48 +26,89 @@
         const analytics = getAnalytics(app);
         const db = getDatabase(app);
 
-        // Правим функциите достъпни глобално, за да може onclick да ги вика
+        // ====== ЗАРЕЖДАНЕ НА АБОНАМЕНТИ ======
         window.loadSubscriptions = async function() {
             const dbRef = ref(db);
             const contentDiv = document.getElementById('subs-content');
-            contentDiv.innerHTML = '<p>Зареждане...</p>';
+            contentDiv.innerHTML = '<p style="color:#94a3b8;">Зареждане...</p>';
+
             try {
                 const snapshot = await get(child(dbRef, 'subscriptions'));
                 if (snapshot.exists()) {
                     const data = snapshot.val();
                     let html = '';
-                    for (const [key, value] of Object.entries(data)) {
-                        html += `<div class="card"><h3>${key}</h3><p>${value}</p></div>`;
+                    for (const [key, sub] of Object.entries(data)) {
+                        // Поддръжка и на стар формат (само текст) и на нов (обект)
+                        const name = sub.name || key;
+                        const price = sub.price || '';
+                        const modules = sub.modules || [];
+                        const description = (typeof sub === 'string') ? sub : '';
+
+                        const modulesHtml = modules.length > 0
+                            ? `<div class="modules-list">${modules.map(m => `<span class="tag">✓ ${m}</span>`).join('')}</div>`
+                            : (description ? `<p class="old-desc">${description}</p>` : '');
+
+                        html += `
+                            <div class="sub-card">
+                                <div class="sub-header">
+                                    <h3>${name}</h3>
+                                    ${price ? `<span class="price">${price}</span>` : ''}
+                                </div>
+                                ${modulesHtml}
+                            </div>
+                        `;
                     }
                     contentDiv.innerHTML = html;
                 } else {
-                    contentDiv.innerHTML = '<p>Все още няма добавени абонаменти.</p>';
+                    contentDiv.innerHTML = '<p style="color:#94a3b8;">Все още няма добавени абонаменти.</p>';
                 }
             } catch (error) {
                 console.error(error);
-                contentDiv.innerHTML = '<p>Грешка при зареждане.</p>';
+                contentDiv.innerHTML = '<p style="color:#f87171;">Грешка при зареждане.</p>';
             }
         };
 
+        // ====== ЗАРЕЖДАНЕ НА КОНТАКТИ ======
         window.loadContacts = async function() {
             const dbRef = ref(db);
             const contentDiv = document.getElementById('contacts-content');
-            contentDiv.innerHTML = '<p>Зареждане...</p>';
+            contentDiv.innerHTML = '<p style="color:#94a3b8;">Зареждане...</p>';
+
             try {
                 const snapshot = await get(child(dbRef, 'contacts'));
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    contentDiv.innerHTML = `
-                        <div class="contact-item"><strong>📞 Телефон:</strong> ${data.phone || 'Няма въведен'}</div>
-                        <div class="contact-item"><strong>✉️ Имейл:</strong> ${data.email || 'Няма въведен'}</div>
-                        <div class="contact-item"><strong>📍 Адрес:</strong> ${data.address || 'Няма въведен'}</div>
-                    `;
+                    let html = '';
+
+                    // Проверяваме дали е стар формат (един обект с phone/email/address)
+                    if (data.phone || data.email || data.address) {
+                        html += `
+                            <div class="contact-card">
+                                <h3>📞 Контакт</h3>
+                                ${data.phone ? `<p><strong>Телефон:</strong> ${data.phone}</p>` : ''}
+                                ${data.email ? `<p><strong>Имейл:</strong> ${data.email}</p>` : ''}
+                                ${data.address ? `<p><strong>Адрес:</strong> ${data.address}</p>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        // Нов формат - множество контакти
+                        for (const [key, contact] of Object.entries(data)) {
+                            html += `
+                                <div class="contact-card">
+                                    <h3>👤 ${contact.name || 'Контакт'}</h3>
+                                    ${contact.phone ? `<p><strong>📞 Телефон:</strong> <a href="tel:${contact.phone}">${contact.phone}</a></p>` : ''}
+                                    ${contact.email ? `<p><strong>✉️ Имейл:</strong> <a href="mailto:${contact.email}">${contact.email}</a></p>` : ''}
+                                </div>
+                            `;
+                        }
+                    }
+                    contentDiv.innerHTML = html;
                 } else {
-                    contentDiv.innerHTML = '<p>Няма въведена информация за контакти.</p>';
+                    contentDiv.innerHTML = '<p style="color:#94a3b8;">Няма добавени контакти.</p>';
                 }
             } catch (error) {
                 console.error(error);
-                contentDiv.innerHTML = '<p>Грешка при зареждане.</p>';
+                contentDiv.innerHTML = '<p style="color:#f87171;">Грешка при зареждане.</p>';
             }
         };
     </script>
@@ -130,6 +171,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-start;
+        }
+
+        #page-home.active {
             justify-content: center;
         }
 
@@ -179,7 +224,7 @@
 
         /* Секции Абонаменти / Контакти */
         .content-box {
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
             margin: 0 auto;
         }
@@ -187,43 +232,121 @@
         .page h2 {
             font-size: 2.5rem;
             margin-bottom: 30px;
+            color: #2dd4bf;
         }
 
-        .card {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
+        /* Карти за абонаменти */
+        .sub-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
             margin: 15px 0;
-            border-radius: 10px;
+            border-radius: 12px;
             border-left: 5px solid #2dd4bf;
             text-align: left;
+            transition: transform 0.2s, background 0.2s;
         }
 
-        .card h3 {
+        .sub-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .sub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .sub-header h3 {
+            color: #ffffff;
+            font-size: 1.4rem;
+        }
+
+        .price {
+            background: #2dd4bf;
+            color: #0b2b4f;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+
+        .modules-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            background: rgba(45, 212, 191, 0.15);
             color: #2dd4bf;
-            margin-bottom: 10px;
-            text-transform: capitalize;
+            padding: 6px 14px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            font-weight: 500;
         }
 
-        .contact-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
+        .old-desc {
+            color: #cbd5e1;
+            font-size: 1rem;
+        }
+
+        /* Карти за контакти */
+        .contact-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
             margin: 15px 0;
-            border-radius: 10px;
-            font-size: 1.2rem;
-            text-align: left;
+            border-radius: 12px;
             border-left: 5px solid #2dd4bf;
+            text-align: left;
+            transition: transform 0.2s, background 0.2s;
         }
 
-        .contact-item strong {
+        .contact-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .contact-card h3 {
             color: #2dd4bf;
-            margin-right: 10px;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
         }
 
+        .contact-card p {
+            margin: 8px 0;
+            font-size: 1.05rem;
+        }
+
+        .contact-card strong {
+            color: #cbd5e1;
+            margin-right: 5px;
+        }
+
+        .contact-card a {
+            color: #2dd4bf;
+            text-decoration: none;
+        }
+
+        .contact-card a:hover {
+            text-decoration: underline;
+        }
+
+        /* Адаптивен дизайн */
         @media (max-width: 600px) {
             h1 { font-size: 2rem; }
+            .page h2 { font-size: 1.8rem; }
             .buttons-container { flex-direction: column; gap: 15px; }
             .btn { width: 100%; }
-            nav { justify-content: center; }
+            nav { justify-content: center; padding: 12px; gap: 8px; }
+            .nav-item { padding: 8px 12px; font-size: 0.9rem; }
+            .sub-header { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -276,27 +399,21 @@
     </div>
 
     <script>
-        // Функция за превключване между страниците (модулите)
+        // Превключване между секциите
         function showPage(pageId) {
-            // Скриваме всички страници
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            // Махаме active от всички nav бутони
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
-            // Показваме избраната
             document.getElementById('page-' + pageId).classList.add('active');
             document.getElementById('nav-' + pageId).classList.add('active');
 
-            // Ако е абонаменти - зареждаме данните
             if (pageId === 'subs' && typeof window.loadSubscriptions === 'function') {
                 window.loadSubscriptions();
             }
-            // Ако е контакти - зареждаме данните
             if (pageId === 'contacts' && typeof window.loadContacts === 'function') {
                 window.loadContacts();
             }
 
-            // Скролваме най-горе
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     </script>
