@@ -7,7 +7,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, get, child, remove, push } 
+        import { getDatabase, ref, set, get, child, remove, push, update } 
             from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
@@ -32,6 +32,7 @@
         ];
 
         let editingSubId = null;
+        let editingContactId = null;
 
         function renderModuleCheckboxes(containerId, checkedModules = []) {
             const container = document.getElementById(containerId);
@@ -49,6 +50,7 @@
                         .map(cb => cb.value);
         }
 
+        // ====== ВХОД ======
         window.checkLogin = async function() {
             const username = document.getElementById('login-username').value.trim().toLowerCase();
             const password = document.getElementById('login-password').value;
@@ -56,6 +58,7 @@
             errorDiv.textContent = '';
 
             if (username === 'admin' && password === MASTER_PASSWORD) {
+                saveSession('admin');
                 openAdminPanel('admin');
                 return;
             }
@@ -65,6 +68,7 @@
                 if (snapshot.exists()) {
                     const userData = snapshot.val();
                     if (userData.password === password) {
+                        saveSession(username);
                         openAdminPanel(username);
                         return;
                     }
@@ -76,6 +80,39 @@
             }
         };
 
+        // ====== СЕСИЯ ======
+        function saveSession(username) {
+            localStorage.setItem('physioAdminUser', username);
+            localStorage.setItem('physioAdminTime', Date.now().toString());
+        }
+
+        function getSession() {
+            const user = localStorage.getItem('physioAdminUser');
+            const time = localStorage.getItem('physioAdminTime');
+            if (!user || !time) return null;
+
+            // Сесията изтича след 7 дни
+            const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+            if (Date.now() - parseInt(time) > SEVEN_DAYS) {
+                clearSession();
+                return null;
+            }
+            return user;
+        }
+
+        function clearSession() {
+            localStorage.removeItem('physioAdminUser');
+            localStorage.removeItem('physioAdminTime');
+        }
+
+        // При зареждане – проверяваме за активна сесия
+        window.addEventListener('DOMContentLoaded', () => {
+            const user = getSession();
+            if (user) {
+                openAdminPanel(user);
+            }
+        });
+
         function openAdminPanel(username) {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('admin-panel').style.display = 'block';
@@ -84,6 +121,7 @@
             loadAdminData();
         }
 
+        // ====== ЗАРЕЖДАНЕ НА ДАННИ ======
         window.loadAdminData = async function() {
             const dbRef = ref(db);
 
@@ -133,13 +171,18 @@
                     let html = '';
                     for (const [key, contact] of Object.entries(data)) {
                         html += `
-                            <div class="item">
-                                <div>
-                                    <strong>${contact.name || '—'}</strong><br>
-                                    ${contact.phone ? `<span>📞 ${contact.phone}</span><br>` : ''}
-                                    <span>✉️ ${contact.email || '—'}</span>
+                            <div class="item-block">
+                                <div class="item-header">
+                                    <div>
+                                        <strong>${contact.name || '—'}</strong><br>
+                                        ${contact.phone ? `<span>📞 ${contact.phone}</span><br>` : ''}
+                                        <span>✉️ ${contact.email || '—'}</span>
+                                    </div>
+                                    <div class="item-actions">
+                                        <button class="btn-edit" onclick="editContact('${key}')">✏️ Редакция</button>
+                                        <button class="btn-delete" onclick="deleteContact('${key}')">🗑️ Изтрий</button>
+                                    </div>
                                 </div>
-                                <button class="btn-delete" onclick="deleteContact('${key}')">Изтрий</button>
                             </div>
                         `;
                     }
@@ -174,6 +217,7 @@
             } catch (e) { console.error(e); }
         };
 
+        // ====== АБОНАМЕНТИ: ДОБАВЯНЕ / РЕДАКЦИЯ ======
         window.addSub = async function() {
             const name = document.getElementById('sub-name').value.trim();
             const price = document.getElementById('sub-price').value.trim();
@@ -245,29 +289,38 @@
             }
         };
 
-        // ====== ДОБАВЯНЕ НА КОНТАКТ (телефонът вече не е задължителен) ======
+        // ====== КОНТАКТИ: ДОБАВЯНЕ / РЕДАКЦИЯ ======
         window.addContact = async function() {
             const name = document.getElementById('contact-name').value.trim();
             const phone = document.getElementById('contact-phone').value.trim();
             const email = document.getElementById('contact-email').value.trim();
 
-            // Задължителни: име и имейл. Телефонът е опционален.
             if (!name || !email) {
                 alert('Моля, попълни име и имейл! Телефонът е опционален.');
                 return;
             }
 
             try {
-                const id = 'contact_' + Date.now();
-                // Записваме само попълнените полета
-                const contactData = { name, email };
-                if (phone) contactData.phone = phone;
+                if (editingContactId) {
+                    // Обновяване на съществуващ контакт
+                    const contactData = { name, email };
+                    if (phone) contactData.phone = phone;
+                    else contactData.phone = null; // за да се изчисти, ако е бил махнат
+                    
+                    await update(ref(db, 'contacts/' + editingContactId), contactData);
+                    editingContactId = null;
+                    document.getElementById('contact-form-title').textContent = '➕ Добави нов контакт';
+                    document.getElementById('contact-cancel-btn').style.display = 'none';
+                } else {
+                    // Нов контакт
+                    const id = 'contact_' + Date.now();
+                    const contactData = { name, email };
+                    if (phone) contactData.phone = phone;
+                    await set(ref(db, 'contacts/' + id), contactData);
+                }
 
-                await set(ref(db, 'contacts/' + id), contactData);
-                document.getElementById('contact-name').value = '';
-                document.getElementById('contact-phone').value = '';
-                document.getElementById('contact-email').value = '';
-                document.getElementById('contact-status').textContent = '✅ Контактът е добавен!';
+                clearContactForm();
+                document.getElementById('contact-status').textContent = '✅ Запазено успешно!';
                 setTimeout(() => document.getElementById('contact-status').textContent = '', 3000);
                 loadAdminData();
             } catch (e) {
@@ -275,16 +328,50 @@
             }
         };
 
+        window.editContact = async function(key) {
+            try {
+                const snapshot = await get(child(ref(db), 'contacts/' + key));
+                if (snapshot.exists()) {
+                    const contact = snapshot.val();
+                    document.getElementById('contact-name').value = contact.name || '';
+                    document.getElementById('contact-phone').value = contact.phone || '';
+                    document.getElementById('contact-email').value = contact.email || '';
+                    editingContactId = key;
+                    document.getElementById('contact-form-title').textContent = '✏️ Редакция на контакт';
+                    document.getElementById('contact-cancel-btn').style.display = 'inline-block';
+                    // Скролваме до формата
+                    document.getElementById('contact-form-title').scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (e) {
+                alert('Грешка: ' + e.message);
+            }
+        };
+
+        window.cancelContactEdit = function() {
+            editingContactId = null;
+            clearContactForm();
+            document.getElementById('contact-form-title').textContent = '➕ Добави нов контакт';
+            document.getElementById('contact-cancel-btn').style.display = 'none';
+        };
+
+        function clearContactForm() {
+            document.getElementById('contact-name').value = '';
+            document.getElementById('contact-phone').value = '';
+            document.getElementById('contact-email').value = '';
+        }
+
         window.deleteContact = async function(key) {
             if (!confirm('Сигурен ли си, че искаш да изтриеш този контакт?')) return;
             try {
                 await remove(ref(db, 'contacts/' + key));
+                if (editingContactId === key) cancelContactEdit();
                 loadAdminData();
             } catch (e) {
                 alert('Грешка: ' + e.message);
             }
         };
 
+        // ====== ПОТРЕБИТЕЛИ ======
         window.addUser = async function() {
             const username = document.getElementById('user-name').value.trim().toLowerCase();
             const password = document.getElementById('user-pass').value;
@@ -328,7 +415,9 @@
             }
         };
 
+        // ====== ИЗХОД ======
         window.logout = function() {
+            clearSession();
             location.reload();
         };
     </script>
@@ -594,7 +683,7 @@
             accent-color: #2dd4bf;
         }
 
-        #sub-form-title {
+        #sub-form-title, #contact-form-title {
             color: #2dd4bf;
             font-size: 1.1rem;
             margin-bottom: 15px;
@@ -632,7 +721,7 @@
         <div class="section">
             <h2>📋 Абонаменти</h2>
             <div class="hint">
-                💡 Можеш да добавяш <strong>колкото искаш абонаменти</strong>. Всеки получава уникален ID, така че не се презаписват.
+                💡 Можеш да добавяш <strong>колкото искаш абонаменти</strong>. Всеки получава уникален ID.
             </div>
 
             <h3 id="sub-form-title">➕ Добави нов абонамент</h3>
@@ -660,11 +749,13 @@
         <div class="section">
             <h2>📞 Контакти</h2>
             <div class="hint">
-                Можеш да добавиш колкото искаш контакти. <strong>Задължителни са само име и имейл</strong> – телефонът е опционален.
+                Можеш да добавяш и редактираш контакти. <strong>Задължителни са само име и имейл</strong> – телефонът е опционален.
             </div>
 
+            <h3 id="contact-form-title">➕ Добави нов контакт</h3>
+
             <div class="form-group">
-                <label>Име на контакта (напр. Отдел Продажби)</label>
+                <label>Име на контакта</label>
                 <input type="text" id="contact-name" placeholder="Отдел Продажби">
             </div>
             <div class="form-group">
@@ -675,7 +766,8 @@
                 <label>Имейл</label>
                 <input type="email" id="contact-email" placeholder="sales@physiobook.eu">
             </div>
-            <button class="btn-primary" onclick="addContact()">➕ Добави контакт</button>
+            <button class="btn-primary" onclick="addContact()">➕ Добави / Обнови</button>
+            <button class="btn-cancel" id="contact-cancel-btn" onclick="cancelContactEdit()" style="display:none;">Отказ</button>
             <div class="status-msg" id="contact-status"></div>
 
             <h2 style="margin-top: 30px; font-size: 1.1rem;">Съществуващи контакти:</h2>
