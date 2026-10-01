@@ -25,7 +25,6 @@
         const analytics = getAnalytics(app);
         const db = getDatabase(app);
 
-        // ====== ЗАРЕЖДАНЕ НА АБОНАМЕНТИ ======
         window.loadSubscriptions = async function() {
             const dbRef = ref(db);
             const contentDiv = document.getElementById('subs-content');
@@ -42,7 +41,6 @@
                         const modules = sub.modules || [];
                         const description = (typeof sub === 'string') ? sub : '';
 
-                        // Ако цената не съдържа "година", добавяме " / година"
                         let priceHtml = price;
                         if (price && !price.toLowerCase().includes('год')) {
                             if (/^[\d€$]/.test(price.trim())) {
@@ -85,7 +83,6 @@
             }
         };
 
-        // ====== ЗАРЕЖДАНЕ НА КОНТАКТИ ======
         window.loadContacts = async function() {
             const dbRef = ref(db);
             const contentDiv = document.getElementById('contacts-content');
@@ -130,12 +127,7 @@
     </script>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
         body {
             background-color: #0b2b4f;
@@ -145,7 +137,6 @@
             flex-direction: column;
         }
 
-        /* Навигация */
         nav {
             background-color: rgba(0, 0, 0, 0.2);
             padding: 15px 30px;
@@ -165,53 +156,19 @@
             user-select: none;
         }
 
-        .nav-item:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #2dd4bf;
-        }
+        .nav-item:hover { background-color: rgba(255, 255, 255, 0.1); color: #2dd4bf; }
+        .nav-item.active { color: #2dd4bf; background-color: rgba(45, 212, 191, 0.15); }
 
-        .nav-item.active {
-            color: #2dd4bf;
-            background-color: rgba(45, 212, 191, 0.15);
-        }
+        .page { display: none; flex: 1; padding: 40px 20px; text-align: center; }
+        .page.active { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+        #page-home.active { justify-content: center; }
 
-        /* Секции */
-        .page {
-            display: none;
-            flex: 1;
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        .page.active {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-        }
-
-        #page-home.active {
-            justify-content: center;
-        }
-
-        /* Начална страница */
         .logo-container { margin-bottom: 20px; }
         .logo-container svg { width: 120px; height: 120px; }
 
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 40px;
-            letter-spacing: 2px;
-            font-weight: 700;
-            color: #ffffff;
-        }
+        h1 { font-size: 3rem; margin-bottom: 40px; letter-spacing: 2px; font-weight: 700; color: #ffffff; }
 
-        .buttons-container {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
+        .buttons-container { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; }
 
         .btn {
             text-decoration: none;
@@ -226,27 +183,12 @@
             min-width: 200px;
             display: inline-block;
         }
+        .btn:hover { background-color: #e2e8f0; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
 
-        .btn:hover {
-            background-color: #e2e8f0;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
+        .content-box { max-width: 1200px; width: 100%; margin: 0 auto; }
+        .page h2 { font-size: 2.5rem; margin-bottom: 40px; color: #2dd4bf; }
 
-        /* Абонаменти / Контакти */
-        .content-box {
-            max-width: 1200px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .page h2 {
-            font-size: 2.5rem;
-            margin-bottom: 40px;
-            color: #2dd4bf;
-        }
-
-        /* ===== СТИЛ ЗА АБОНАМЕНТИ ===== */
+        /* ===== АБОНАМЕНТИ ===== */
         .subs-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -256,14 +198,16 @@
             align-items: stretch;
         }
 
+        /* 🌟 СВЕТЛО СИН ФОН */
         .sub-card {
-            background: #ffffff;
-            color: #1a1a1a;
+            background: #1e4a7a; /* по-светло син */
+            color: #ffffff;
             border-radius: 16px;
             padding: 40px 30px;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
             display: flex;
             flex-direction: column;
         }
@@ -271,26 +215,24 @@
         .sub-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+            border-color: #2dd4bf;
         }
 
         .sub-name {
             font-size: 1.8rem;
             font-weight: 700;
-            color: #1a1a1a;
+            color: #ffffff;
             margin-bottom: 20px;
         }
 
         .sub-price {
             font-size: 1.7rem;
             font-weight: 600;
-            color: #1a1a1a;
+            color: #2dd4bf;
             margin-bottom: 25px;
         }
 
-        .divider {
-            border-top: 1px dashed #d1d5db;
-            margin: 15px 0 25px;
-        }
+        .divider { border-top: 1px dashed rgba(45, 212, 191, 0.4); margin: 15px 0 25px; }
 
         .sub-modules {
             list-style: none;
@@ -305,7 +247,7 @@
             gap: 12px;
             padding: 10px 0;
             font-size: 1rem;
-            color: #1f2937;
+            color: #e2e8f0;
             line-height: 1.4;
         }
 
@@ -319,8 +261,8 @@
 
         /* Забележка */
         .notice {
-            background: #f0fdfa;
-            color: #0b2b4f;
+            background: rgba(45, 212, 191, 0.15);
+            color: #ffffff;
             padding: 12px 15px;
             border-radius: 8px;
             font-size: 0.9rem;
@@ -339,8 +281,8 @@
         }
 
         .contact-card {
-            background: #ffffff;
-            color: #1a1a1a;
+            background: #1e4a7a;
+            color: #ffffff;
             padding: 25px;
             border-radius: 12px;
             border-left: 5px solid #2dd4bf;
@@ -348,18 +290,12 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
-        .contact-card h3 {
-            color: #0b2b4f;
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-        }
-
-        .contact-card p { margin: 8px 0; font-size: 1.05rem; color: #374151; }
-        .contact-card strong { color: #6b7280; margin-right: 5px; }
+        .contact-card h3 { color: #2dd4bf; font-size: 1.3rem; margin-bottom: 15px; }
+        .contact-card p { margin: 8px 0; font-size: 1.05rem; color: #e2e8f0; }
+        .contact-card strong { color: #94a3b8; margin-right: 5px; }
         .contact-card a { color: #2dd4bf; text-decoration: none; font-weight: 600; }
         .contact-card a:hover { text-decoration: underline; }
 
-        /* Адаптивен дизайн */
         @media (max-width: 600px) {
             h1 { font-size: 2rem; }
             .page h2 { font-size: 1.8rem; }
