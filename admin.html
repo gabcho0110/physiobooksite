@@ -24,27 +24,15 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // ====== ГЛАВНА ПАРОЛА ======
         const MASTER_PASSWORD = "physio2024";
 
-        // ====== СПИСЪК С ВСИЧКИ МОДУЛИ ======
         const ALL_MODULES = [
-            "Табло",
-            "Пациенти",
-            "График",
-            "Процедури",
-            "Тестове и скали",
-            "Инвентар",
-            "Ваучери",
-            "Упражнения",
-            "Документация",
-            "Ценоразпис"
+            "Табло", "Пациенти", "График", "Процедури", "Тестове и скали",
+            "Инвентар", "Ваучери", "Упражнения", "Документация", "Ценоразпис"
         ];
 
-        // Текущ ID на абонамент, който редактираме (null = нов)
         let editingSubId = null;
 
-        // Генериране на чекбоксовете за модули
         function renderModuleCheckboxes(containerId, checkedModules = []) {
             const container = document.getElementById(containerId);
             container.innerHTML = ALL_MODULES.map(m => `
@@ -61,7 +49,6 @@
                         .map(cb => cb.value);
         }
 
-        // ====== ВХОД ======
         window.checkLogin = async function() {
             const username = document.getElementById('login-username').value.trim().toLowerCase();
             const password = document.getElementById('login-password').value;
@@ -97,7 +84,6 @@
             loadAdminData();
         }
 
-        // ====== ЗАРЕЖДАНЕ НА ДАННИ ======
         window.loadAdminData = async function() {
             const dbRef = ref(db);
 
@@ -150,7 +136,7 @@
                             <div class="item">
                                 <div>
                                     <strong>${contact.name || '—'}</strong><br>
-                                    <span>📞 ${contact.phone || '—'}</span><br>
+                                    ${contact.phone ? `<span>📞 ${contact.phone}</span><br>` : ''}
                                     <span>✉️ ${contact.email || '—'}</span>
                                 </div>
                                 <button class="btn-delete" onclick="deleteContact('${key}')">Изтрий</button>
@@ -188,7 +174,6 @@
             } catch (e) { console.error(e); }
         };
 
-        // ====== ДОБАВЯНЕ / ОБНОВЯВАНЕ НА АБОНАМЕНТ ======
         window.addSub = async function() {
             const name = document.getElementById('sub-name').value.trim();
             const price = document.getElementById('sub-price').value.trim();
@@ -199,21 +184,15 @@
                 return;
             }
 
-            const data = {
-                name: name,
-                price: price,
-                modules: modules
-            };
+            const data = { name, price, modules };
 
             try {
                 if (editingSubId) {
-                    // Обновяваме съществуващ
                     await set(ref(db, 'subscriptions/' + editingSubId), data);
                     editingSubId = null;
                     document.getElementById('sub-form-title').textContent = '➕ Добави нов абонамент';
                     document.getElementById('sub-cancel-btn').style.display = 'none';
                 } else {
-                    // Добавяме нов с уникален ключ
                     const newRef = push(ref(db, 'subscriptions'));
                     await set(newRef, data);
                 }
@@ -224,7 +203,6 @@
             }
         };
 
-        // ====== РЕДАКЦИЯ ======
         window.editSub = async function(key) {
             try {
                 const snapshot = await get(child(ref(db), 'subscriptions/' + key));
@@ -256,7 +234,6 @@
             renderModuleCheckboxes('sub-modules');
         }
 
-        // ====== ИЗТРИВАНЕ НА АБОНАМЕНТ ======
         window.deleteSub = async function(key) {
             if (!confirm(`Сигурен ли си, че искаш да изтриеш този абонамент?`)) return;
             try {
@@ -268,20 +245,25 @@
             }
         };
 
-        // ====== ДОБАВЯНЕ НА КОНТАКТ ======
+        // ====== ДОБАВЯНЕ НА КОНТАКТ (телефонът вече не е задължителен) ======
         window.addContact = async function() {
             const name = document.getElementById('contact-name').value.trim();
             const phone = document.getElementById('contact-phone').value.trim();
             const email = document.getElementById('contact-email').value.trim();
 
-            if (!name || !phone || !email) {
-                alert('Моля, попълни име, телефон и имейл!');
+            // Задължителни: име и имейл. Телефонът е опционален.
+            if (!name || !email) {
+                alert('Моля, попълни име и имейл! Телефонът е опционален.');
                 return;
             }
 
             try {
                 const id = 'contact_' + Date.now();
-                await set(ref(db, 'contacts/' + id), { name, phone, email });
+                // Записваме само попълнените полета
+                const contactData = { name, email };
+                if (phone) contactData.phone = phone;
+
+                await set(ref(db, 'contacts/' + id), contactData);
                 document.getElementById('contact-name').value = '';
                 document.getElementById('contact-phone').value = '';
                 document.getElementById('contact-email').value = '';
@@ -293,7 +275,6 @@
             }
         };
 
-        // ====== ИЗТРИВАНЕ НА КОНТАКТ ======
         window.deleteContact = async function(key) {
             if (!confirm('Сигурен ли си, че искаш да изтриеш този контакт?')) return;
             try {
@@ -304,7 +285,6 @@
             }
         };
 
-        // ====== ДОБАВЯНЕ НА ПОТРЕБИТЕЛ ======
         window.addUser = async function() {
             const username = document.getElementById('user-name').value.trim().toLowerCase();
             const password = document.getElementById('user-pass').value;
@@ -338,7 +318,6 @@
             }
         };
 
-        // ====== ИЗТРИВАНЕ НА ПОТРЕБИТЕЛ ======
         window.deleteUser = async function(username) {
             if (!confirm(`Сигурен ли си, че искаш да изтриеш потребител "${username}"?`)) return;
             try {
@@ -349,7 +328,6 @@
             }
         };
 
-        // ====== ИЗХОД ======
         window.logout = function() {
             location.reload();
         };
@@ -369,7 +347,6 @@
         h1 { text-align: center; margin-bottom: 10px; font-size: 2rem; }
         .subtitle { text-align: center; color: #94a3b8; margin-bottom: 30px; }
 
-        /* Login */
         #login-screen {
             max-width: 400px;
             margin: 80px auto;
@@ -406,7 +383,6 @@
         #login-screen button:hover { background: #22b8a6; }
         #login-error { color: #f87171; margin-top: 12px; font-size: 0.9rem; min-height: 20px; }
 
-        /* Admin panel */
         #admin-panel { display: none; }
         .top-bar {
             display: flex;
@@ -457,6 +433,12 @@
             margin-bottom: 6px;
             font-size: 0.9rem;
             color: #cbd5e1;
+        }
+        .form-group label .optional {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            font-weight: normal;
+            margin-left: 5px;
         }
         .form-group input, .form-group textarea {
             width: 100%;
@@ -623,7 +605,6 @@
 </head>
 <body>
 
-    <!-- Login Screen -->
     <div id="login-screen">
         <h2>🔐 Админ Вход</h2>
         <input type="text" id="login-username" placeholder="Потребителско име" autocomplete="off">
@@ -637,7 +618,6 @@
         </div>
     </div>
 
-    <!-- Admin Panel -->
     <div id="admin-panel" class="container">
         <div class="top-bar">
             <a href="index.html" class="back-link">← Обратно към сайта</a>
@@ -680,7 +660,7 @@
         <div class="section">
             <h2>📞 Контакти</h2>
             <div class="hint">
-                Можеш да добавиш колкото искаш контакти. Всеки има име, телефон и имейл.
+                Можеш да добавиш колкото искаш контакти. <strong>Задължителни са само име и имейл</strong> – телефонът е опционален.
             </div>
 
             <div class="form-group">
@@ -688,7 +668,7 @@
                 <input type="text" id="contact-name" placeholder="Отдел Продажби">
             </div>
             <div class="form-group">
-                <label>Телефон</label>
+                <label>Телефон <span class="optional">(незадължително)</span></label>
                 <input type="text" id="contact-phone" placeholder="+359 88 123 4567">
             </div>
             <div class="form-group">
