@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhysioBook - Начало</title>
+    <title>PhysioBook</title>
 
-    <!-- Firebase SDK (само инициализация, без зареждане на данни) -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+        import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDpmljSMd8dB7esFXwV_fA1XCzJCg3dp-8",
@@ -23,6 +24,52 @@
 
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
+        const db = getDatabase(app);
+
+        // Правим функциите достъпни глобално, за да може onclick да ги вика
+        window.loadSubscriptions = async function() {
+            const dbRef = ref(db);
+            const contentDiv = document.getElementById('subs-content');
+            contentDiv.innerHTML = '<p>Зареждане...</p>';
+            try {
+                const snapshot = await get(child(dbRef, 'subscriptions'));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    let html = '';
+                    for (const [key, value] of Object.entries(data)) {
+                        html += `<div class="card"><h3>${key}</h3><p>${value}</p></div>`;
+                    }
+                    contentDiv.innerHTML = html;
+                } else {
+                    contentDiv.innerHTML = '<p>Все още няма добавени абонаменти.</p>';
+                }
+            } catch (error) {
+                console.error(error);
+                contentDiv.innerHTML = '<p>Грешка при зареждане.</p>';
+            }
+        };
+
+        window.loadContacts = async function() {
+            const dbRef = ref(db);
+            const contentDiv = document.getElementById('contacts-content');
+            contentDiv.innerHTML = '<p>Зареждане...</p>';
+            try {
+                const snapshot = await get(child(dbRef, 'contacts'));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    contentDiv.innerHTML = `
+                        <div class="contact-item"><strong>📞 Телефон:</strong> ${data.phone || 'Няма въведен'}</div>
+                        <div class="contact-item"><strong>✉️ Имейл:</strong> ${data.email || 'Няма въведен'}</div>
+                        <div class="contact-item"><strong>📍 Адрес:</strong> ${data.address || 'Няма въведен'}</div>
+                    `;
+                } else {
+                    contentDiv.innerHTML = '<p>Няма въведена информация за контакти.</p>';
+                }
+            } catch (error) {
+                console.error(error);
+                contentDiv.innerHTML = '<p>Грешка при зареждане.</p>';
+            }
+        };
     </script>
 
     <style>
@@ -35,6 +82,227 @@
 
         body {
             background-color: #0b2b4f;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Навигация */
+        nav {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 20px;
+        }
+
+        .nav-item {
+            text-decoration: none;
+            color: white;
+            padding: 10px 15px;
+            font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s, color 0.3s;
+            user-select: none;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #2dd4bf;
+        }
+
+        .nav-item.active {
+            color: #2dd4bf;
+            background-color: rgba(45, 212, 191, 0.15);
+        }
+
+        /* Секции (модули) */
+        .page {
+            display: none;
+            flex: 1;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .page.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Начална страница */
+        .logo-container {
+            margin-bottom: 20px;
+        }
+
+        .logo-container svg {
+            width: 120px;
+            height: 120px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            text-decoration: none;
+            color: #0b2b4f;
+            background-color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            min-width: 200px;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        /* Секции Абонаменти / Контакти */
+        .content-box {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .page h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 5px solid #2dd4bf;
+            text-align: left;
+        }
+
+        .card h3 {
+            color: #2dd4bf;
+            margin-bottom: 10px;
+            text-transform: capitalize;
+        }
+
+        .contact-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            text-align: left;
+            border-left: 5px solid #2dd4bf;
+        }
+
+        .contact-item strong {
+            color: #2dd4bf;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .buttons-container { flex-direction: column; gap: 15px; }
+            .btn { width: 100%; }
+            nav { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Навигация -->
+    <nav>
+        <span class="nav-item active" id="nav-home" onclick="showPage('home')">Начало</span>
+        <span class="nav-item" id="nav-subs" onclick="showPage('subs')">Абонаменти</span>
+        <span class="nav-item" id="nav-contacts" onclick="showPage('contacts')">Контакти</span>
+    </nav>
+
+    <!-- Секция: Начало -->
+    <div class="page active" id="page-home">
+        <div class="logo-container">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="90" fill="#0b2b4f" stroke="#2dd4bf" stroke-width="4"/>
+                <circle cx="100" cy="100" r="75" fill="none" stroke="#2dd4bf" stroke-width="2" opacity="0.6"/>
+                <circle cx="100" cy="65" r="12" fill="#1e4a7a"/>
+                <rect x="92" y="82" width="16" height="50" rx="8" fill="#1e4a7a"/>
+                <circle cx="100" cy="90" r="3" fill="#2dd4bf"/>
+                <circle cx="100" cy="100" r="3" fill="#2dd4bf"/>
+                <circle cx="100" cy="110" r="3" fill="#2dd4bf"/>
+                <circle cx="100" cy="120" r="3" fill="#2dd4bf"/>
+                <path d="M 70 80 Q 100 55 130 80" fill="none" stroke="#2dd4bf" stroke-width="3" stroke-linecap="round"/>
+                <path d="M 70 135 Q 100 150 130 135" fill="none" stroke="#2dd4bf" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <h1>PhysioBook</h1>
+        <div class="buttons-container">
+            <a href="https://physiobook.eu" class="btn">За пациенти</a>
+            <a href="https://physiobook.eu" class="btn">За служители</a>
+        </div>
+    </div>
+
+    <!-- Секция: Абонаменти -->
+    <div class="page" id="page-subs">
+        <div class="content-box">
+            <h2>Нашите Абонаменти</h2>
+            <div id="subs-content">Зареждане...</div>
+        </div>
+    </div>
+
+    <!-- Секция: Контакти -->
+    <div class="page" id="page-contacts">
+        <div class="content-box">
+            <h2>Свържете се с нас</h2>
+            <div id="contacts-content">Зареждане...</div>
+        </div>
+    </div>
+
+    <script>
+        // Функция за превключване между страниците (модулите)
+        function showPage(pageId) {
+            // Скриваме всички страници
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // Махаме active от всички nav бутони
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            // Показваме избраната
+            document.getElementById('page-' + pageId).classList.add('active');
+            document.getElementById('nav-' + pageId).classList.add('active');
+
+            // Ако е абонаменти - зареждаме данните
+            if (pageId === 'subs' && typeof window.loadSubscriptions === 'function') {
+                window.loadSubscriptions();
+            }
+            // Ако е контакти - зареждаме данните
+            if (pageId === 'contacts' && typeof window.loadContacts === 'function') {
+                window.loadContacts();
+            }
+
+            // Скролваме най-горе
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+
+</body>
+</html>            background-color: #0b2b4f;
             color: white;
             min-height: 100vh;
             display: flex;
