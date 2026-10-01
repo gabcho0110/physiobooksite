@@ -4,9 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PhysioBook - Начало</title>
-    
+
+    <!-- Firebase SDK (само инициализация, без зареждане на данни) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpmljSMd8dB7esFXwV_fA1XCzJCg3dp-8",
+            authDomain: "physiobooksite.firebaseapp.com",
+            databaseURL: "https://physiobooksite-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "physiobooksite",
+            storageBucket: "physiobooksite.firebasestorage.app",
+            messagingSenderId: "760895644002",
+            appId: "1:760895644002:web:a8bf7ab2ed5e7ec7d3cc3b",
+            measurementId: "G-Q7QSXNNG54"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+    </script>
+
     <style>
-        /* Основни стилове */
         * {
             margin: 0;
             padding: 0;
@@ -15,22 +34,20 @@
         }
 
         body {
-            background-color: #0b2b4f; /* Тъмно син фон */
+            background-color: #0b2b4f;
             color: white;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* Навигационно меню */
+        /* Навигация - вече са линкове, не падащи менюта */
         nav {
             background-color: rgba(0, 0, 0, 0.2);
             padding: 15px 30px;
             display: flex;
             justify-content: flex-end;
             gap: 20px;
-            position: relative;
-            z-index: 100;
         }
 
         .nav-item {
@@ -58,7 +75,6 @@
             text-align: center;
         }
 
-        /* Лого */
         .logo-container {
             margin-bottom: 20px;
         }
@@ -68,7 +84,6 @@
             height: 120px;
         }
 
-        /* Заглавие */
         h1 {
             font-size: 3rem;
             margin-bottom: 40px;
@@ -76,7 +91,6 @@
             font-weight: 700;
         }
 
-        /* Бутони */
         .buttons-container {
             display: flex;
             gap: 30px;
@@ -84,6 +98,7 @@
             justify-content: center;
         }
 
+        /* Бутони - отварят се в същия таб (без target="_blank") */
         .btn {
             text-decoration: none;
             color: #0b2b4f;
@@ -104,7 +119,6 @@
             box-shadow: 0 6px 20px rgba(0,0,0,0.3);
         }
 
-        /* Адаптивен дизайн */
         @media (max-width: 600px) {
             h1 { font-size: 2rem; }
             .buttons-container { flex-direction: column; gap: 15px; }
@@ -115,7 +129,7 @@
 </head>
 <body>
 
-    <!-- Навигация (вече са линкове) -->
+    <!-- Навигация: линкове към нови страници -->
     <nav>
         <a href="subscriptions.html" class="nav-item">Абонаменти</a>
         <a href="contacts.html" class="nav-item">Контакти</a>
@@ -123,8 +137,8 @@
 
     <!-- Основно съдържание -->
     <div class="main-container">
-        
-        <!-- Лого (Вградено като SVG) -->
+
+        <!-- Лого на PhysioBook (вградено SVG) -->
         <div class="logo-container">
             <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="100" cy="100" r="90" fill="#0b2b4f" stroke="#2dd4bf" stroke-width="4"/>
@@ -143,7 +157,7 @@
         <!-- Име -->
         <h1>PhysioBook</h1>
 
-        <!-- Бутони (вече се отварят в същия таб) -->
+        <!-- Бутони (същия таб) -->
         <div class="buttons-container">
             <a href="https://physiobook.eu" class="btn">За пациенти</a>
             <a href="https://physiobook.eu" class="btn">За служители</a>
