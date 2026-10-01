@@ -7,7 +7,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, get, child, remove } 
+        import { getDatabase, ref, set, get, child, remove, push } 
             from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
@@ -41,6 +41,9 @@
             "Ценоразпис"
         ];
 
+        // Текущ ID на абонамент, който редактираме (null = нов)
+        let editingSubId = null;
+
         // Генериране на чекбоксовете за модули
         function renderModuleCheckboxes(containerId, checkedModules = []) {
             const container = document.getElementById(containerId);
@@ -52,7 +55,6 @@
             `).join('');
         }
 
-        // Взима избраните модули от контейнер
         function getCheckedModules(containerId) {
             const container = document.getElementById(containerId);
             return Array.from(container.querySelectorAll('input[type="checkbox"]:checked'))
@@ -107,7 +109,6 @@
                     const data = snapshot.val();
                     let html = '';
                     for (const [key, sub] of Object.entries(data)) {
-                        // Поддръжка и на стар формат (само текст) и на нов (обект)
                         const name = sub.name || key;
                         const price = sub.price || '—';
                         const modules = sub.modules || [];
@@ -122,7 +123,10 @@
                                         <strong>${name}</strong>
                                         <span class="price">${price}</span>
                                     </div>
-                                    <button class="btn-delete" onclick="deleteSub('${key}')">Изтрий</button>
+                                    <div class="item-actions">
+                                        <button class="btn-edit" onclick="editSub('${key}')">✏️ Редакция</button>
+                                        <button class="btn-delete" onclick="deleteSub('${key}')">🗑️ Изтрий</button>
+                                    </div>
                                 </div>
                                 <div class="modules-list">${modulesList}</div>
                             </div>
@@ -184,7 +188,7 @@
             } catch (e) { console.error(e); }
         };
 
-        // ====== ДОБАВЯНЕ НА АБОНАМЕНТ ======
+        // ====== ДОБАВЯНЕ / ОБНОВЯВАНЕ НА АБОНАМЕНТ ======
         window.addSub = async function() {
             const name = document.getElementById('sub-name').value.trim();
             const price = document.getElementById('sub-price').value.trim();
@@ -195,31 +199,69 @@
                 return;
             }
 
-            // Генерираме уникален ключ (slug) от името, за да е стабилно при презапис
-            const key = name.toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^a-z0-9\-]/g, '');
+            const data = {
+                name: name,
+                price: price,
+                modules: modules
+            };
 
             try {
-                await set(ref(db, 'subscriptions/' + key), {
-                    name: name,
-                    price: price,
-                    modules: modules
-                });
-                document.getElementById('sub-name').value = '';
-                document.getElementById('sub-price').value = '';
-                renderModuleCheckboxes('sub-modules');
+                if (editingSubId) {
+                    // Обновяваме съществуващ
+                    await set(ref(db, 'subscriptions/' + editingSubId), data);
+                    editingSubId = null;
+                    document.getElementById('sub-form-title').textContent = '➕ Добави нов абонамент';
+                    document.getElementById('sub-cancel-btn').style.display = 'none';
+                } else {
+                    // Добавяме нов с уникален ключ
+                    const newRef = push(ref(db, 'subscriptions'));
+                    await set(newRef, data);
+                }
+                clearSubForm();
                 loadAdminData();
             } catch (e) {
                 alert('Грешка: ' + e.message);
             }
         };
 
+        // ====== РЕДАКЦИЯ ======
+        window.editSub = async function(key) {
+            try {
+                const snapshot = await get(child(ref(db), 'subscriptions/' + key));
+                if (snapshot.exists()) {
+                    const sub = snapshot.val();
+                    document.getElementById('sub-name').value = sub.name || '';
+                    document.getElementById('sub-price').value = sub.price || '';
+                    renderModuleCheckboxes('sub-modules', sub.modules || []);
+                    editingSubId = key;
+                    document.getElementById('sub-form-title').textContent = '✏️ Редакция на абонамент';
+                    document.getElementById('sub-cancel-btn').style.display = 'inline-block';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            } catch (e) {
+                alert('Грешка: ' + e.message);
+            }
+        };
+
+        window.cancelEdit = function() {
+            editingSubId = null;
+            clearSubForm();
+            document.getElementById('sub-form-title').textContent = '➕ Добави нов абонамент';
+            document.getElementById('sub-cancel-btn').style.display = 'none';
+        };
+
+        function clearSubForm() {
+            document.getElementById('sub-name').value = '';
+            document.getElementById('sub-price').value = '';
+            renderModuleCheckboxes('sub-modules');
+        }
+
         // ====== ИЗТРИВАНЕ НА АБОНАМЕНТ ======
         window.deleteSub = async function(key) {
             if (!confirm(`Сигурен ли си, че искаш да изтриеш този абонамент?`)) return;
             try {
                 await remove(ref(db, 'subscriptions/' + key));
+                if (editingSubId === key) cancelEdit();
                 loadAdminData();
             } catch (e) {
                 alert('Грешка: ' + e.message);
@@ -238,7 +280,6 @@
             }
 
             try {
-                // Генерираме уникален ID за всеки контакт
                 const id = 'contact_' + Date.now();
                 await set(ref(db, 'contacts/' + id), { name, phone, email });
                 document.getElementById('contact-name').value = '';
@@ -328,7 +369,7 @@
         h1 { text-align: center; margin-bottom: 10px; font-size: 2rem; }
         .subtitle { text-align: center; color: #94a3b8; margin-bottom: 30px; }
 
-        /* Login screen */
+        /* Login */
         #login-screen {
             max-width: 400px;
             margin: 80px auto;
@@ -439,6 +480,19 @@
             transition: 0.3s;
         }
         .btn-primary:hover { background: #22b8a6; }
+        .btn-cancel {
+            background: #64748b;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-left: 10px;
+        }
+        .btn-cancel:hover { background: #475569; }
 
         .item {
             display: flex;
@@ -464,6 +518,10 @@
             margin-bottom: 10px;
             flex-wrap: wrap;
             gap: 10px;
+        }
+        .item-actions {
+            display: flex;
+            gap: 8px;
         }
         .price {
             display: inline-block;
@@ -501,6 +559,18 @@
             white-space: nowrap;
         }
         .btn-delete:hover { background: #dc2626; }
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+        .btn-edit:hover { background: #2563eb; }
 
         .status-msg { color: #2dd4bf; margin-top: 10px; font-weight: 600; min-height: 20px; }
 
@@ -514,7 +584,6 @@
             margin-bottom: 15px;
         }
 
-        /* Checkboxes */
         .checkbox-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -541,6 +610,14 @@
             height: 18px;
             cursor: pointer;
             accent-color: #2dd4bf;
+        }
+
+        #sub-form-title {
+            color: #2dd4bf;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed rgba(45, 212, 191, 0.3);
         }
     </style>
 </head>
@@ -574,6 +651,11 @@
         <!-- Абонаменти -->
         <div class="section">
             <h2>📋 Абонаменти</h2>
+            <div class="hint">
+                💡 Можеш да добавяш <strong>колкото искаш абонаменти</strong>. Всеки получава уникален ID, така че не се презаписват.
+            </div>
+
+            <h3 id="sub-form-title">➕ Добави нов абонамент</h3>
 
             <div class="form-group">
                 <label>Име на абонамента</label>
@@ -581,13 +663,14 @@
             </div>
             <div class="form-group">
                 <label>Цена</label>
-                <input type="text" id="sub-price" placeholder="напр. 20 лв/месец">
+                <input type="text" id="sub-price" placeholder="напр. 20 лв/година">
             </div>
             <div class="form-group">
                 <label>Модули, включени в абонамента:</label>
                 <div class="checkbox-grid" id="sub-modules"></div>
             </div>
             <button class="btn-primary" onclick="addSub()">➕ Добави / Обнови</button>
+            <button class="btn-cancel" id="sub-cancel-btn" onclick="cancelEdit()" style="display:none;">Отказ</button>
 
             <h2 style="margin-top: 30px; font-size: 1.1rem;">Съществуващи абонаменти:</h2>
             <div id="subs-list"></div>
