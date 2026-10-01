@@ -5,36 +5,153 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PhysioBook - Начало</title>
     
-    <!-- Firebase SDK (Module) -->
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
-        import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    <style>
+        /* Основни стилове */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDpmljSMd8dB7esFXwV_fA1XCzJCg3dp-8",
-            authDomain: "physiobooksite.firebaseapp.com",
-            databaseURL: "https://physiobooksite-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "physiobooksite",
-            storageBucket: "physiobooksite.firebasestorage.app",
-            messagingSenderId: "760895644002",
-            appId: "1:760895644002:web:a8bf7ab2ed5e7ec7d3cc3b",
-            measurementId: "G-Q7QSXNNG54"
-        };
+        body {
+            background-color: #0b2b4f; /* Тъмно син фон */
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const db = getDatabase(app);
+        /* Навигационно меню */
+        nav {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 20px;
+            position: relative;
+            z-index: 100;
+        }
 
-        // Функция за зареждане на съдържание от Firebase (за Абонаменти и Контакти)
-        async function loadContent() {
-            const dbRef = ref(db);
-            
-            // Зареждане на Абонаменти
-            try {
+        .nav-item {
+            text-decoration: none;
+            color: white;
+            padding: 10px 15px;
+            font-weight: 600;
+            border-radius: 5px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #2dd4bf;
+        }
+
+        /* Основно съдържание */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Лого */
+        .logo-container {
+            margin-bottom: 20px;
+        }
+
+        .logo-container svg {
+            width: 120px;
+            height: 120px;
+        }
+
+        /* Заглавие */
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        /* Бутони */
+        .buttons-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            text-decoration: none;
+            color: #0b2b4f;
+            background-color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            min-width: 200px;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        /* Адаптивен дизайн */
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .buttons-container { flex-direction: column; gap: 15px; }
+            .btn { width: 100%; }
+            nav { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Навигация (вече са линкове) -->
+    <nav>
+        <a href="subscriptions.html" class="nav-item">Абонаменти</a>
+        <a href="contacts.html" class="nav-item">Контакти</a>
+    </nav>
+
+    <!-- Основно съдържание -->
+    <div class="main-container">
+        
+        <!-- Лого (Вградено като SVG) -->
+        <div class="logo-container">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="90" fill="#0b2b4f" stroke="#2dd4bf" stroke-width="4"/>
+                <circle cx="100" cy="100" r="75" fill="none" stroke="#2dd4bf" stroke-width="2" opacity="0.6"/>
+                <circle cx="100" cy="65" r="12" fill="#1e4a7a"/>
+                <rect x="92" y="82" width="16" height="50" rx="8" fill="#1e4a7a"/>
+                <circle cx="100" cy="90" r="3" fill="#2dd4bf"/>
+                <circle cx="100" cy="100" r="3" fill="#2dd4bf"/>
+                <circle cx="100" cy="110" r="3" fill="#2dd4bf"/>
+                <circle cx="100" cy="120" r="3" fill="#2dd4bf"/>
+                <path d="M 70 80 Q 100 55 130 80" fill="none" stroke="#2dd4bf" stroke-width="3" stroke-linecap="round"/>
+                <path d="M 70 135 Q 100 150 130 135" fill="none" stroke="#2dd4bf" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+        </div>
+
+        <!-- Име -->
+        <h1>PhysioBook</h1>
+
+        <!-- Бутони (вече се отварят в същия таб) -->
+        <div class="buttons-container">
+            <a href="https://physiobook.eu" class="btn">За пациенти</a>
+            <a href="https://physiobook.eu" class="btn">За служители</a>
+        </div>
+    </div>
+
+</body>
+</html>            try {
                 const snapshot = await get(child(dbRef, 'subscriptions'));
                 if (snapshot.exists()) {
                     const data = snapshot.val();
