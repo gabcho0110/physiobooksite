@@ -26,9 +26,19 @@
 
         const MASTER_PASSWORD = "physio2024";
 
+        // ====== СПИСЪК С ВСИЧКИ МОДУЛИ (добавено "Досиета") ======
         const ALL_MODULES = [
-            "Табло", "Пациенти", "График", "Процедури", "Тестове и скали",
-            "Инвентар", "Ваучери", "Упражнения", "Документация", "Ценоразпис"
+            "Табло",
+            "Пациенти",
+            "График",
+            "Процедури",
+            "Тестове и скали",
+            "Инвентар",
+            "Ваучери",
+            "Упражнения",
+            "Документация",
+            "Ценоразпис",
+            "Досиета"
         ];
 
         let editingSubId = null;
@@ -91,7 +101,6 @@
             const time = localStorage.getItem('physioAdminTime');
             if (!user || !time) return null;
 
-            // Сесията изтича след 7 дни
             const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
             if (Date.now() - parseInt(time) > SEVEN_DAYS) {
                 clearSession();
@@ -105,7 +114,6 @@
             localStorage.removeItem('physioAdminTime');
         }
 
-        // При зареждане – проверяваме за активна сесия
         window.addEventListener('DOMContentLoaded', () => {
             const user = getSession();
             if (user) {
@@ -302,17 +310,15 @@
 
             try {
                 if (editingContactId) {
-                    // Обновяване на съществуващ контакт
                     const contactData = { name, email };
                     if (phone) contactData.phone = phone;
-                    else contactData.phone = null; // за да се изчисти, ако е бил махнат
+                    else contactData.phone = null;
                     
                     await update(ref(db, 'contacts/' + editingContactId), contactData);
                     editingContactId = null;
                     document.getElementById('contact-form-title').textContent = '➕ Добави нов контакт';
                     document.getElementById('contact-cancel-btn').style.display = 'none';
                 } else {
-                    // Нов контакт
                     const id = 'contact_' + Date.now();
                     const contactData = { name, email };
                     if (phone) contactData.phone = phone;
@@ -339,7 +345,6 @@
                     editingContactId = key;
                     document.getElementById('contact-form-title').textContent = '✏️ Редакция на контакт';
                     document.getElementById('contact-cancel-btn').style.display = 'inline-block';
-                    // Скролваме до формата
                     document.getElementById('contact-form-title').scrollIntoView({ behavior: 'smooth' });
                 }
             } catch (e) {
