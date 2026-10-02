@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PhysioBook</title>
 
+    <!-- EmailJS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
-        import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, get, child, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDpmljSMd8dB7esFXwV_fA1XCzJCg3dp-8",
@@ -25,6 +28,15 @@
         const analytics = getAnalytics(app);
         const db = getDatabase(app);
 
+        // ====== EMAILJS КОНФИГУРАЦИЯ ======
+        const EMAILJS_PUBLIC_KEY = "jpsBNWlPSXnHXHOCA";          // ✅ попълнен
+        const EMAILJS_SERVICE_ID = "service_813jud7";            // ✅ попълнен
+        const EMAILJS_TEMPLATE_ID = "template_19ek2jk";          // ✅ попълнен
+        const RECEIVER_EMAIL = "atodorov434@gmail.com";          // ✅ новият получател
+
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+
+        // ====== АБОНАМЕНТИ ======
         window.loadSubscriptions = async function() {
             const dbRef = ref(db);
             const contentDiv = document.getElementById('subs-content');
@@ -49,25 +61,15 @@
                         }
 
                         const modulesHtml = modules.length > 0
-                            ? modules.map(m => `
-                                <li>
-                                    <span class="check">✓</span>
-                                    <span>${m}</span>
-                                </li>
-                            `).join('')
+                            ? modules.map(m => `<li><span class="check">✓</span><span>${m}</span></li>`).join('')
                             : (description ? `<li><span class="check">✓</span><span>${description}</span></li>` : '');
 
                         html += `
                             <div class="sub-card">
                                 <h3 class="sub-name">${name}</h3>
                                 <div class="sub-price">${priceHtml}</div>
-
                                 <div class="divider"></div>
-
-                                <ul class="sub-modules">
-                                    ${modulesHtml}
-                                </ul>
-
+                                <ul class="sub-modules">${modulesHtml}</ul>
                                 <div class="notice">За да закупите план трябва да се свържете с нас</div>
                             </div>
                         `;
@@ -83,7 +85,7 @@
             }
         };
 
-        // ====== ЗАРЕЖДАНЕ НА КОНТАКТИ (с подобрен стил) ======
+        // ====== КОНТАКТИ ======
         window.loadContacts = async function() {
             const dbRef = ref(db);
             const contentDiv = document.getElementById('contacts-content');
@@ -135,6 +137,134 @@
                 contentDiv.innerHTML = '<p style="color:#f87171;">Грешка при зареждане.</p>';
             }
         };
+
+        // ====== ИЗПРАЩАНЕ НА ПРЕДЛОЖЕНИЕ (чрез EmailJS) ======
+        window.sendSuggestion = async function() {
+            const name = document.getElementById('sug-name').value.trim();
+            const email = document.getElementById('sug-email').value.trim();
+            const message = document.getElementById('sug-message').value.trim();
+            const statusDiv = document.getElementById('suggestion-status');
+            const btn = document.getElementById('sug-btn');
+
+            if (!name || !email || !message) {
+                statusDiv.style.color = '#f87171';
+                statusDiv.textContent = 'Моля, попълни всички полета!';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Изпращане...';
+            statusDiv.textContent = '';
+
+            try {
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                    from_name: name,
+                    from_email: email,
+                    message: message,
+                    to_email: RECEIVER_EMAIL
+                });
+
+                statusDiv.style.color = '#2dd4bf';
+                statusDiv.textContent = '✅ Благодарим! Предложението ти беше изпратено.';
+                document.getElementById('sug-name').value = '';
+                document.getElementById('sug-email').value = '';
+                document.getElementById('sug-message').value = '';
+            } catch (error) {
+                console.error(error);
+                statusDiv.style.color = '#f87171';
+                statusDiv.textContent = '❌ Възникна грешка. Моля, опитай отново.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📨 Изпрати предложение';
+            }
+        };
+
+        // ====== ЗАРЕЖДАНЕ НА ОТЗИВИ ======
+        window.loadReviews = async function() {
+            const dbRef = ref(db);
+            const contentDiv = document.getElementById('reviews-list');
+            contentDiv.innerHTML = '<p style="color:#cbd5e1;">Зареждане...</p>';
+
+            try {
+                const snapshot = await get(child(dbRef, 'reviews'));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    let html = '<div class="reviews-grid">';
+
+                    const reviews = Object.entries(data)
+                        .map(([key, value]) => ({ key, ...value }))
+                        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                    for (const review of reviews) {
+                        const stars = '★'.repeat(review.rating || 0) + '☆'.repeat(5 - (review.rating || 0));
+                        const date = review.timestamp 
+                            ? new Date(review.timestamp).toLocaleDateString('bg-BG') 
+                            : '';
+                        html += `
+                            <div class="review-card">
+                                <div class="review-header">
+                                    <strong>${review.name || 'Анонимен'}</strong>
+                                    <span class="review-date">${date}</span>
+                                </div>
+                                <div class="review-stars">${stars}</div>
+                                <p class="review-text">${review.text || ''}</p>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    contentDiv.innerHTML = html;
+                } else {
+                    contentDiv.innerHTML = '<p style="color:#cbd5e1;">Все още няма отзиви. Бъди първият!</p>';
+                }
+            } catch (error) {
+                console.error(error);
+                contentDiv.innerHTML = '<p style="color:#f87171;">Грешка при зареждане.</p>';
+            }
+        };
+
+        // ====== ДОБАВЯНЕ НА ОТЗИВ ======
+        window.submitReview = async function() {
+            const name = document.getElementById('rev-name').value.trim();
+            const text = document.getElementById('rev-text').value.trim();
+            const rating = parseInt(document.querySelector('input[name="rating"]:checked')?.value || 0);
+            const statusDiv = document.getElementById('review-status');
+            const btn = document.getElementById('rev-btn');
+
+            if (!name || !text || !rating) {
+                statusDiv.style.color = '#f87171';
+                statusDiv.textContent = 'Моля, попълни име, оценка и текст!';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Изпращане...';
+            statusDiv.textContent = '';
+
+            try {
+                const newRef = push(ref(db, 'reviews'));
+                await set(newRef, {
+                    name: name,
+                    text: text,
+                    rating: rating,
+                    timestamp: Date.now()
+                });
+
+                statusDiv.style.color = '#2dd4bf';
+                statusDiv.textContent = '✅ Благодарим за отзива!';
+                document.getElementById('rev-name').value = '';
+                document.getElementById('rev-text').value = '';
+                document.querySelectorAll('input[name="rating"]').forEach(r => r.checked = false);
+
+                loadReviews();
+            } catch (error) {
+                console.error(error);
+                statusDiv.style.color = '#f87171';
+                statusDiv.textContent = '❌ Възникна грешка. Моля, опитай отново.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⭐ Изпрати отзив';
+            }
+        };
     </script>
 
     <style>
@@ -153,7 +283,8 @@
             padding: 15px 30px;
             display: flex;
             justify-content: flex-end;
-            gap: 20px;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
         .nav-item {
@@ -197,9 +328,8 @@
         .btn:hover { background-color: #e2e8f0; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
 
         .content-box { max-width: 1200px; width: 100%; margin: 0 auto; }
-        .page h2 { font-size: 2.5rem; margin-bottom: 40px; color: #2dd4bf; }
+        .page h2 { font-size: 2.5rem; margin-bottom: 30px; color: #2dd4bf; }
 
-        /* ===== АБОНАМЕНТИ ===== */
         .subs-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -221,27 +351,13 @@
             display: flex;
             flex-direction: column;
         }
-
-        .sub-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
-            border-color: #2dd4bf;
-        }
-
+        .sub-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35); border-color: #2dd4bf; }
         .sub-name { font-size: 1.8rem; font-weight: 700; color: #ffffff; margin-bottom: 20px; }
         .sub-price { font-size: 1.7rem; font-weight: 600; color: #2dd4bf; margin-bottom: 25px; }
         .divider { border-top: 1px dashed rgba(45, 212, 191, 0.4); margin: 15px 0 25px; }
 
         .sub-modules { list-style: none; text-align: left; margin-bottom: 25px; flex: 1; }
-        .sub-modules li {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 10px 0;
-            font-size: 1rem;
-            color: #e2e8f0;
-            line-height: 1.4;
-        }
+        .sub-modules li { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; font-size: 1rem; color: #e2e8f0; line-height: 1.4; }
         .check { color: #2dd4bf; font-weight: 700; font-size: 1.2rem; flex-shrink: 0; line-height: 1.4; }
 
         .notice {
@@ -255,15 +371,7 @@
             margin-top: auto;
         }
 
-        /* ===== КОНТАКТИ (ПОПРАВЕНИ) ===== */
-        .contacts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-            width: 100%;
-        }
+        .contacts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; width: 100%; }
 
         .contact-card {
             background: #1e4a7a;
@@ -273,66 +381,90 @@
             border-left: 5px solid #2dd4bf;
             text-align: left;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            /* Позволява на картата да расте според съдържанието */
             min-width: 0;
             overflow-wrap: anywhere;
             word-break: break-word;
         }
-
-        .contact-card h3,
-        .contact-card .contact-name {
-            color: #2dd4bf;
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            line-height: 1.3;
-            /* Пренася дълги имена */
-            overflow-wrap: anywhere;
-            word-break: break-word;
-        }
-
-        /* Всеки ред: икона/етикет + стойност */
-        .contact-line {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-start;
-            gap: 8px;
-            margin: 10px 0;
-            font-size: 1rem;
-            line-height: 1.5;
-            min-width: 0;
-        }
-
-        .contact-line .label {
-            color: #94a3b8;
-            font-weight: 600;
-            flex-shrink: 0;
-            white-space: nowrap;
-        }
-
-        .contact-line .value {
-            color: #2dd4bf;
-            text-decoration: none;
-            font-weight: 600;
-            /* Позволява пренасяне на дълги имейли/телефони */
-            overflow-wrap: anywhere;
-            word-break: break-word;
-            min-width: 0;
-            flex: 1;
-        }
-
+        .contact-card h3 { color: #2dd4bf; font-size: 1.2rem; margin-bottom: 15px; line-height: 1.3; overflow-wrap: anywhere; word-break: break-word; }
+        .contact-line { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 10px 0; font-size: 1rem; line-height: 1.5; min-width: 0; }
+        .contact-line .label { color: #94a3b8; font-weight: 600; flex-shrink: 0; white-space: nowrap; }
+        .contact-line .value { color: #2dd4bf; text-decoration: none; font-weight: 600; overflow-wrap: anywhere; word-break: break-word; min-width: 0; flex: 1; }
         .contact-line .value:hover { text-decoration: underline; }
-
-        .contact-card p {
-            margin: 8px 0;
-            font-size: 1rem;
-            color: #e2e8f0;
-            line-height: 1.5;
-            overflow-wrap: anywhere;
-            word-break: break-word;
-        }
+        .contact-card p { margin: 8px 0; font-size: 1rem; color: #e2e8f0; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word; }
         .contact-card strong { color: #94a3b8; margin-right: 5px; }
         .contact-card a { color: #2dd4bf; text-decoration: none; font-weight: 600; }
         .contact-card a:hover { text-decoration: underline; }
+
+        .form-box {
+            background: #1e4a7a;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 700px;
+            margin: 0 auto 40px;
+            text-align: left;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+        }
+
+        .form-box h3 { color: #2dd4bf; font-size: 1.4rem; margin-bottom: 20px; text-align: center; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.95rem; color: #cbd5e1; font-weight: 600; }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #0b2b4f;
+            background: #0b2b4f;
+            color: white;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus { outline: none; border-color: #2dd4bf; }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+
+        .form-btn {
+            background: #2dd4bf;
+            color: #0b2b4f;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            width: 100%;
+        }
+        .form-btn:hover:not(:disabled) { background: #22b8a6; transform: translateY(-2px); }
+        .form-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .form-status { margin-top: 15px; text-align: center; font-weight: 600; min-height: 24px; }
+
+        .rating-stars { display: flex; flex-direction: row-reverse; justify-content: center; gap: 5px; margin-top: 8px; }
+        .rating-stars input { display: none; }
+        .rating-stars label { font-size: 2.5rem; color: #64748b; cursor: pointer; transition: color 0.2s, transform 0.2s; }
+        .rating-stars label:hover,
+        .rating-stars label:hover ~ label,
+        .rating-stars input:checked ~ label { color: #fbbf24; }
+        .rating-stars label:hover { transform: scale(1.15); }
+
+        .reviews-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; text-align: left; }
+
+        .review-card {
+            background: #1e4a7a;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #2dd4bf;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 5px; }
+        .review-header strong { color: #ffffff; font-size: 1.05rem; }
+        .review-date { color: #94a3b8; font-size: 0.85rem; }
+        .review-stars { color: #fbbf24; font-size: 1.2rem; letter-spacing: 2px; margin-bottom: 10px; }
+        .review-text { color: #e2e8f0; font-size: 0.98rem; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word; }
 
         @media (max-width: 600px) {
             h1 { font-size: 2rem; }
@@ -340,7 +472,7 @@
             .buttons-container { flex-direction: column; gap: 15px; }
             .btn { width: 100%; }
             nav { justify-content: center; padding: 12px; gap: 8px; }
-            .nav-item { padding: 8px 12px; font-size: 0.9rem; }
+            .nav-item { padding: 8px 12px; font-size: 0.85rem; }
             .sub-card { padding: 30px 20px; }
             .sub-name { font-size: 1.5rem; }
             .sub-price { font-size: 1.4rem; }
@@ -355,6 +487,8 @@
         <span class="nav-item active" id="nav-home" onclick="showPage('home')">Начало</span>
         <span class="nav-item" id="nav-subs" onclick="showPage('subs')">Абонаменти</span>
         <span class="nav-item" id="nav-contacts" onclick="showPage('contacts')">Контакти</span>
+        <span class="nav-item" id="nav-suggestions" onclick="showPage('suggestions')">Предложения</span>
+        <span class="nav-item" id="nav-reviews" onclick="showPage('reviews')">Отзиви</span>
     </nav>
 
     <div class="page active" id="page-home">
@@ -393,6 +527,62 @@
         </div>
     </div>
 
+    <div class="page" id="page-suggestions">
+        <div class="content-box">
+            <h2>Направи предложение</h2>
+            <div class="form-box">
+                <h3>💡 Имаш идея? Пиши ни!</h3>
+                <div class="form-group">
+                    <label>Твоето име</label>
+                    <input type="text" id="sug-name" placeholder="Иван Иванов">
+                </div>
+                <div class="form-group">
+                    <label>Твоят имейл</label>
+                    <input type="email" id="sug-email" placeholder="ivan@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Твоето предложение</label>
+                    <textarea id="sug-message" placeholder="Какво можем да добавим или подобрим?"></textarea>
+                </div>
+                <button class="form-btn" id="sug-btn" onclick="sendSuggestion()">📨 Изпрати предложение</button>
+                <div class="form-status" id="suggestion-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page" id="page-reviews">
+        <div class="content-box">
+            <h2>Отзиви от нашите клиенти</h2>
+
+            <div class="form-box">
+                <h3>⭐ Сподели своя опит</h3>
+                <div class="form-group">
+                    <label>Твоето име</label>
+                    <input type="text" id="rev-name" placeholder="Иван Иванов">
+                </div>
+                <div class="form-group">
+                    <label>Оценка</label>
+                    <div class="rating-stars">
+                        <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
+                        <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
+                        <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
+                        <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
+                        <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Твоят отзив</label>
+                    <textarea id="rev-text" placeholder="Сподели своето мнение за PhysioBook..."></textarea>
+                </div>
+                <button class="form-btn" id="rev-btn" onclick="submitReview()">⭐ Изпрати отзив</button>
+                <div class="form-status" id="review-status"></div>
+            </div>
+
+            <h2 style="font-size: 1.8rem; margin-top: 40px;">Какво казват другите</h2>
+            <div id="reviews-list">Зареждане...</div>
+        </div>
+    </div>
+
     <script>
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -401,12 +591,9 @@
             document.getElementById('page-' + pageId).classList.add('active');
             document.getElementById('nav-' + pageId).classList.add('active');
 
-            if (pageId === 'subs' && typeof window.loadSubscriptions === 'function') {
-                window.loadSubscriptions();
-            }
-            if (pageId === 'contacts' && typeof window.loadContacts === 'function') {
-                window.loadContacts();
-            }
+            if (pageId === 'subs' && typeof window.loadSubscriptions === 'function') window.loadSubscriptions();
+            if (pageId === 'contacts' && typeof window.loadContacts === 'function') window.loadContacts();
+            if (pageId === 'reviews' && typeof window.loadReviews === 'function') window.loadReviews();
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
