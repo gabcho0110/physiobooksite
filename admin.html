@@ -24,8 +24,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        const MASTER_PASSWORD = "physio2024";
-
         const ALL_MODULES = [
             "Табло",
             "Пациенти",
@@ -59,16 +57,15 @@
                         .map(cb => cb.value);
         }
 
-        // ====== ВХОД ======
+        // ====== ВХОД (само с потребители от Firebase) ======
         window.checkLogin = async function() {
             const username = document.getElementById('login-username').value.trim().toLowerCase();
             const password = document.getElementById('login-password').value;
             const errorDiv = document.getElementById('login-error');
             errorDiv.textContent = '';
 
-            if (username === 'admin' && password === MASTER_PASSWORD) {
-                saveSession('admin');
-                openAdminPanel('admin');
+            if (!username || !password) {
+                errorDiv.textContent = 'Моля, попълни потребителско име и парола!';
                 return;
             }
 
@@ -382,10 +379,6 @@
 
             if (!username || !password) {
                 alert('Моля, попълни потребителско име и парола!');
-                return;
-            }
-            if (username === 'admin') {
-                alert('"admin" е запазено име! Избери друго.');
                 return;
             }
             if (username.length < 3) {
