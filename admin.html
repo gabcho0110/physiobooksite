@@ -26,7 +26,6 @@
 
         const MASTER_PASSWORD = "physio2024";
 
-        // ====== СПИСЪК С ВСИЧКИ МОДУЛИ (добавено "Досиета") ======
         const ALL_MODULES = [
             "Табло",
             "Пациенти",
@@ -705,11 +704,6 @@
         <input type="password" id="login-password" placeholder="Парола" onkeypress="if(event.key==='Enter') checkLogin()">
         <button onclick="checkLogin()">Влез</button>
         <div id="login-error"></div>
-        <div class="hint" style="margin-top: 20px; text-align: left;">
-            <strong>Първи вход:</strong><br>
-            Потребител: <code>admin</code><br>
-            Парола: <code>physio2024</code>
-        </div>
     </div>
 
     <div id="admin-panel" class="container">
