@@ -8,35 +8,7 @@
     <!-- EmailJS -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
-        import { getDatabase, ref, get, child, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDpmljSMd8dB7esFXwV_fA1XCzJCg3dp-8",
-            authDomain: "physiobooksite.firebaseapp.com",
-            databaseURL: "https://physiobooksite-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "physiobooksite",
-            storageBucket: "physiobooksite.firebasestorage.app",
-            messagingSenderId: "760895644002",
-            appId: "1:760895644002:web:a8bf7ab2ed5e7ec7d3cc3b",
-            measurementId: "G-Q7QSXNNG54"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const db = getDatabase(app);
-        const auth = getAuth(app);
-        let authReady = (async () => {
-            try {
-                await signInAnonymously(auth);
-            } catch (e) {
-                console.warn('Anonymous auth failed:', e);
-            }
-        })();
-
+    <script>
         // ====== EMAILJS КОНФИГУРАЦИЯ ======
         const EMAILJS_PUBLIC_KEY = "jpsBNWlPSXnHXHOCA";
         const EMAILJS_SERVICE_ID = "service_813jud7";
@@ -45,108 +17,116 @@
 
         emailjs.init(EMAILJS_PUBLIC_KEY);
 
-        // ====== АБОНАМЕНТИ ======
-        window.loadSubscriptions = async function() {
-            await authReady;
-            const dbRef = ref(db);
-            const contentDiv = document.getElementById('subs-content');
-            contentDiv.innerHTML = '<p style="color:#cbd5e1;">Зареждане...</p>';
-
-            try {
-                const snapshot = await get(child(dbRef, 'subscriptions'));
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    let html = '<div class="subs-grid">';
-                    for (const [key, sub] of Object.entries(data)) {
-                        const name = sub.name || key;
-                        let price = sub.price || '';
-                        const modules = sub.modules || [];
-                        const description = (typeof sub === 'string') ? sub : '';
-
-                        let priceHtml = price;
-                        if (price && !price.toLowerCase().includes('год')) {
-                            if (/^[\d€$]/.test(price.trim())) {
-                                priceHtml = price + ' / година';
-                            }
-                        }
-
-                        const modulesHtml = modules.length > 0
-                            ? modules.map(m => `<li><span class="check">✓</span><span>${m}</span></li>`).join('')
-                            : (description ? `<li><span class="check">✓</span><span>${description}</span></li>` : '');
-
-                        html += `
-                            <div class="sub-card">
-                                <h3 class="sub-name">${name}</h3>
-                                <div class="sub-price">${priceHtml}</div>
-                                <div class="divider"></div>
-                                <ul class="sub-modules">${modulesHtml}</ul>
-                                <div class="notice">За да закупите план трябва да се свържете с нас</div>
-                            </div>
-                        `;
-                    }
-                    html += '</div>';
-                    contentDiv.innerHTML = html;
-                } else {
-                    contentDiv.innerHTML = '<p style="color:#cbd5e1;">Все още няма добавени абонаменти.</p>';
-                }
-            } catch (error) {
-                console.error(error);
-                contentDiv.innerHTML = '<p style="color:#f87171;">Грешка при зареждане.</p>';
+        // ====== СТАТИЧНИ ДАННИ (вградени в страницата) ======
+        // Редактирай тук, за да промениш абонаментите и контактите.
+        const STATIC_SUBSCRIPTIONS = [
+            {
+                name: "Стартов",
+                price: "Безплатно",
+                modules: ["Табло", "Пациенти", "График", "Процедури"]
+            },
+            {
+                name: "Професионален",
+                price: "29 лв. / месец",
+                modules: ["Табло", "Пациенти", "График", "Замествания", "Процедури", "Тестове и скали", "Инвентар", "Упражнения", "Документация", "Ценоразпис"]
+            },
+            {
+                name: "Клиник",
+                price: "59 лв. / месец",
+                modules: ["Табло", "Пациенти", "График", "Замествания", "Процедури", "Тестове и скали", "Инвентар", "Ваучери", "Упражнения", "Документация", "Ценоразпис", "Досиета"]
             }
+        ];
+
+        const STATIC_CONTACTS = [
+            { name: "PhysioBook", phone: "+359 88 123 4567", email: "info@physiobook.eu" }
+        ];
+
+        const SEED_REVIEWS = [
+            { name: "Д-р Иванов", text: "PhysioBook промени начина, по който управлявам кабинета си. Графикът и досиетата са перфектно организирани.", rating: 5, timestamp: Date.now() - 86400000 * 7 },
+            { name: "Д-р Петрова", text: "Най-добрата платформа за физиотерапевти в България. Препоръчвам я на всички колеги.", rating: 5, timestamp: Date.now() - 86400000 * 3 }
+        ];
+
+        // ====== ПОМОЩНИ ФУНКЦИИ ======
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = String(str || '');
+            return d.innerHTML;
+        }
+
+        function getReviews() {
+            const stored = JSON.parse(localStorage.getItem('physio_reviews') || '[]');
+            if (stored.length === 0 && !localStorage.getItem('physio_reviews_seeded')) {
+                localStorage.setItem('physio_reviews', JSON.stringify(SEED_REVIEWS));
+                localStorage.setItem('physio_reviews_seeded', '1');
+                return SEED_REVIEWS.slice();
+            }
+            return stored;
+        }
+
+        function saveReview(review) {
+            const reviews = getReviews();
+            reviews.push(review);
+            localStorage.setItem('physio_reviews', JSON.stringify(reviews));
+        }
+
+        // ====== АБОНАМЕНТИ ======
+        window.loadSubscriptions = function() {
+            const contentDiv = document.getElementById('subs-content');
+            if (!STATIC_SUBSCRIPTIONS.length) {
+                contentDiv.innerHTML = '<p style="color:#cbd5e1;">Все още няма добавени абонаменти.</p>';
+                return;
+            }
+            let html = '<div class="subs-grid">';
+            for (const sub of STATIC_SUBSCRIPTIONS) {
+                const name = esc(sub.name);
+                const price = esc(sub.price);
+                const modules = sub.modules || [];
+                const modulesHtml = modules.length > 0
+                    ? modules.map(m => `<li><span class="check">✓</span><span>${esc(m)}</span></li>`).join('')
+                    : '';
+                html += `
+                    <div class="sub-card">
+                        <h3 class="sub-name">${name}</h3>
+                        <div class="sub-price">${price}</div>
+                        <div class="divider"></div>
+                        <ul class="sub-modules">${modulesHtml}</ul>
+                        <div class="notice">За да закупите план трябва да се свържете с нас</div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            contentDiv.innerHTML = html;
         };
 
         // ====== КОНТАКТИ ======
-        window.loadContacts = async function() {
-            await authReady;
-            const dbRef = ref(db);
+        window.loadContacts = function() {
             const contentDiv = document.getElementById('contacts-content');
-            contentDiv.innerHTML = '<p style="color:#cbd5e1;">Зареждане...</p>';
-
-            try {
-                const snapshot = await get(child(dbRef, 'contacts'));
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    let html = '<div class="contacts-grid">';
-
-                    if (data.phone || data.email || data.address) {
-                        html += `
-                            <div class="contact-card">
-                                <h3>📞 Контакт</h3>
-                                ${data.phone ? `<p><strong>Телефон:</strong> ${data.phone}</p>` : ''}
-                                ${data.email ? `<p><strong>Имейл:</strong> ${data.email}</p>` : ''}
-                                ${data.address ? `<p><strong>Адрес:</strong> ${data.address}</p>` : ''}
-                            </div>
-                        `;
-                    } else {
-                        for (const [key, contact] of Object.entries(data)) {
-                            html += `
-                                <div class="contact-card">
-                                    <h3 class="contact-name">👤 ${contact.name || 'Контакт'}</h3>
-                                    ${contact.phone ? `
-                                        <p class="contact-line">
-                                            <span class="label">📞 Телефон:</span>
-                                            <a href="tel:${contact.phone}" class="value">${contact.phone}</a>
-                                        </p>
-                                    ` : ''}
-                                    ${contact.email ? `
-                                        <p class="contact-line">
-                                            <span class="label">✉️ Имейл:</span>
-                                            <a href="mailto:${contact.email}" class="value">${contact.email}</a>
-                                        </p>
-                                    ` : ''}
-                                </div>
-                            `;
-                        }
-                    }
-                    html += '</div>';
-                    contentDiv.innerHTML = html;
-                } else {
-                    contentDiv.innerHTML = '<p style="color:#cbd5e1;">Няма добавени контакти.</p>';
-                }
-            } catch (error) {
-                console.error(error);
-                contentDiv.innerHTML = '<p style="color:#f87171;">Грешка при зареждане.</p>';
+            if (!STATIC_CONTACTS.length) {
+                contentDiv.innerHTML = '<p style="color:#cbd5e1;">Няма добавени контакти.</p>';
+                return;
             }
+            let html = '<div class="contacts-grid">';
+            for (const contact of STATIC_CONTACTS) {
+                html += `
+                    <div class="contact-card">
+                        <h3 class="contact-name">👤 ${esc(contact.name || 'Контакт')}</h3>
+                        ${contact.phone ? `
+                            <p class="contact-line">
+                                <span class="label">📞 Телефон:</span>
+                                <a href="tel:${esc(contact.phone)}" class="value">${esc(contact.phone)}</a>
+                            </p>
+                        ` : ''}
+                        ${contact.email ? `
+                            <p class="contact-line">
+                                <span class="label">✉️ Имейл:</span>
+                                <a href="mailto:${esc(contact.email)}" class="value">${esc(contact.email)}</a>
+                            </p>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            html += '</div>';
+            contentDiv.innerHTML = html;
         };
 
         // ====== ИЗПРАЩАНЕ НА ПРЕДЛОЖЕНИЕ ======
@@ -191,52 +171,38 @@
         };
 
         // ====== ЗАРЕЖДАНЕ НА ОТЗИВИ ======
-        window.loadReviews = async function() {
-            await authReady;
-            const dbRef = ref(db);
+        window.loadReviews = function() {
             const contentDiv = document.getElementById('reviews-list');
-            contentDiv.innerHTML = '<p style="color:#cbd5e1;">Зареждане...</p>';
+            const reviews = getReviews().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-            try {
-                const snapshot = await get(child(dbRef, 'reviews'));
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    let html = '<div class="reviews-grid">';
-
-                    const reviews = Object.entries(data)
-                        .map(([key, value]) => ({ key, ...value }))
-                        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-                    for (const review of reviews) {
-                        const stars = '★'.repeat(review.rating || 0) + '☆'.repeat(5 - (review.rating || 0));
-                        const date = review.timestamp 
-                            ? new Date(review.timestamp).toLocaleDateString('bg-BG') 
-                            : '';
-                        html += `
-                            <div class="review-card">
-                                <div class="review-header">
-                                    <strong>${review.name || 'Анонимен'}</strong>
-                                    <span class="review-date">${date}</span>
-                                </div>
-                                <div class="review-stars">${stars}</div>
-                                <p class="review-text">${review.text || ''}</p>
-                            </div>
-                        `;
-                    }
-                    html += '</div>';
-                    contentDiv.innerHTML = html;
-                } else {
-                    contentDiv.innerHTML = '<p style="color:#cbd5e1;">Все още няма отзиви. Бъди първият!</p>';
-                }
-            } catch (error) {
-                console.error(error);
-                contentDiv.innerHTML = '<p style="color:#f87171;">Грешка при зареждане.</p>';
+            if (!reviews.length) {
+                contentDiv.innerHTML = '<p style="color:#cbd5e1;">Все още няма отзиви. Бъди първият!</p>';
+                return;
             }
+
+            let html = '<div class="reviews-grid">';
+            for (const review of reviews) {
+                const stars = '★'.repeat(review.rating || 0) + '☆'.repeat(5 - (review.rating || 0));
+                const date = review.timestamp
+                    ? new Date(review.timestamp).toLocaleDateString('bg-BG')
+                    : '';
+                html += `
+                    <div class="review-card">
+                        <div class="review-header">
+                            <strong>${esc(review.name || 'Анонимен')}</strong>
+                            <span class="review-date">${esc(date)}</span>
+                        </div>
+                        <div class="review-stars">${stars}</div>
+                        <p class="review-text">${esc(review.text || '')}</p>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            contentDiv.innerHTML = html;
         };
 
         // ====== ДОБАВЯНЕ НА ОТЗИВ ======
         window.submitReview = async function() {
-            await authReady;
             const name = document.getElementById('rev-name').value.trim();
             const text = document.getElementById('rev-text').value.trim();
             const rating = parseInt(document.querySelector('input[name="rating"]:checked')?.value || 0);
@@ -254,13 +220,17 @@
             statusDiv.textContent = '';
 
             try {
-                const newRef = push(ref(db, 'reviews'));
-                await set(newRef, {
-                    name: name,
-                    text: text,
-                    rating: rating,
-                    timestamp: Date.now()
-                });
+                saveReview({ name, text, rating, timestamp: Date.now() });
+
+                // Изпрати и по имейл за уведомление
+                try {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                        from_name: name,
+                        from_email: 'reviews@physiobook.eu',
+                        message: '⭐ ' + rating + '/5\n\n' + text,
+                        to_email: RECEIVER_EMAIL
+                    });
+                } catch (e) { console.warn('EmailJS review notify failed:', e); }
 
                 statusDiv.style.color = '#2dd4bf';
                 statusDiv.textContent = '✅ Благодарим за отзива!';
