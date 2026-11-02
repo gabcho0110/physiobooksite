@@ -4,11 +4,11 @@
     ".write": false,
     "subscriptions": {
       ".read": true,
-      ".write": false
+      ".write": "auth != null"
     },
     "contacts": {
       ".read": true,
-      ".write": false
+      ".write": "auth != null"
     },
     "reviews": {
       ".read": true,
@@ -16,7 +16,7 @@
     },
     "users": {
       ".read": true,
-      ".write": false
+      ".write": "auth != null"
     }
   }
 }

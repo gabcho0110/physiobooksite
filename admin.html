@@ -9,6 +9,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, get, child, remove, push, update } 
             from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBtvoCkc8PtgVMYHoZJlHgNuspasT5gPY4",
@@ -23,6 +24,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app);
+        let authReady = (async () => {
+            try { await signInAnonymously(auth); } catch (e) { console.warn('Anonymous auth failed:', e); }
+        })();
 
         const ALL_MODULES = [
             "Табло",
@@ -224,6 +229,7 @@
 
         // ====== АБОНАМЕНТИ: ДОБАВЯНЕ / РЕДАКЦИЯ ======
         window.addSub = async function() {
+            await authReady;
             const name = document.getElementById('sub-name').value.trim();
             const price = document.getElementById('sub-price').value.trim();
             const modules = getCheckedModules('sub-modules');
@@ -284,6 +290,7 @@
         }
 
         window.deleteSub = async function(key) {
+            await authReady;
             if (!confirm(`Сигурен ли си, че искаш да изтриеш този абонамент?`)) return;
             try {
                 await remove(ref(db, 'subscriptions/' + key));
@@ -296,6 +303,7 @@
 
         // ====== КОНТАКТИ: ДОБАВЯНЕ / РЕДАКЦИЯ ======
         window.addContact = async function() {
+            await authReady;
             const name = document.getElementById('contact-name').value.trim();
             const phone = document.getElementById('contact-phone').value.trim();
             const email = document.getElementById('contact-email').value.trim();
@@ -363,6 +371,7 @@
         }
 
         window.deleteContact = async function(key) {
+            await authReady;
             if (!confirm('Сигурен ли си, че искаш да изтриеш този контакт?')) return;
             try {
                 await remove(ref(db, 'contacts/' + key));
@@ -375,6 +384,7 @@
 
         // ====== ПОТРЕБИТЕЛИ ======
         window.addUser = async function() {
+            await authReady;
             const username = document.getElementById('user-name').value.trim().toLowerCase();
             const password = document.getElementById('user-pass').value;
 
@@ -404,6 +414,7 @@
         };
 
         window.deleteUser = async function(username) {
+            await authReady;
             if (!confirm(`Сигурен ли си, че искаш да изтриеш потребител "${username}"?`)) return;
             try {
                 await remove(ref(db, 'users/' + username));
