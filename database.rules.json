@@ -1,0 +1,18 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "subscriptions": {
+      ".read": true,
+      ".write": false
+    },
+    "contacts": {
+      ".read": true,
+      ".write": false
+    },
+    "reviews": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
