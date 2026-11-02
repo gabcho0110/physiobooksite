@@ -12,6 +12,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
         import { getDatabase, ref, get, child, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDpmljSMd8dB7esFXwV_fA1XCzJCg3dp-8",
@@ -27,6 +28,14 @@
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
         const db = getDatabase(app);
+        const auth = getAuth(app);
+        let authReady = (async () => {
+            try {
+                await signInAnonymously(auth);
+            } catch (e) {
+                console.warn('Anonymous auth failed:', e);
+            }
+        })();
 
         // ====== EMAILJS КОНФИГУРАЦИЯ ======
         const EMAILJS_PUBLIC_KEY = "jpsBNWlPSXnHXHOCA";
@@ -38,6 +47,7 @@
 
         // ====== АБОНАМЕНТИ ======
         window.loadSubscriptions = async function() {
+            await authReady;
             const dbRef = ref(db);
             const contentDiv = document.getElementById('subs-content');
             contentDiv.innerHTML = '<p style="color:#cbd5e1;">Зареждане...</p>';
@@ -87,6 +97,7 @@
 
         // ====== КОНТАКТИ ======
         window.loadContacts = async function() {
+            await authReady;
             const dbRef = ref(db);
             const contentDiv = document.getElementById('contacts-content');
             contentDiv.innerHTML = '<p style="color:#cbd5e1;">Зареждане...</p>';
@@ -181,6 +192,7 @@
 
         // ====== ЗАРЕЖДАНЕ НА ОТЗИВИ ======
         window.loadReviews = async function() {
+            await authReady;
             const dbRef = ref(db);
             const contentDiv = document.getElementById('reviews-list');
             contentDiv.innerHTML = '<p style="color:#cbd5e1;">Зареждане...</p>';
@@ -224,6 +236,7 @@
 
         // ====== ДОБАВЯНЕ НА ОТЗИВ ======
         window.submitReview = async function() {
+            await authReady;
             const name = document.getElementById('rev-name').value.trim();
             const text = document.getElementById('rev-text').value.trim();
             const rating = parseInt(document.querySelector('input[name="rating"]:checked')?.value || 0);
